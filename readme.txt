@@ -9,8 +9,8 @@ This program implements a concurrent hash table with insert, delete, search, and
 ### Files:
 
 - **`chash.c`**: The main program containing all code.
-- **`commands.txt`**: Input file containing the list of commands to execute.
-- **`output.txt`**: Output file where logs and results are written.
+- ** Makefile
+- ** readme.txt
 
 Program Behavior:
 

@@ -57,6 +57,7 @@ void print_table();
 void init_logging();
 void close_logging();
 uint64_t get_timestamp();
+void log_threads_running(int count);
 void log_command(uint64_t timestamp, const char *command, const char *name, uint32_t salary);
 void log_lock(uint64_t timestamp, const char *message);
 void log_waiting(uint64_t timestamp, const char *message);
@@ -215,14 +216,21 @@ uint64_t get_timestamp() {
     return timestamp;
 }
 
+void log_threads_running(int count) {
+	pthread_mutex_lock(&log_mutex);
+    fprintf(log_file, "Running %d threads\n", count);
+    fflush(log_file);
+    pthread_mutex_unlock(&log_mutex);
+}
+
 void log_command(uint64_t timestamp, const char *command, const char *name, uint32_t salary) {
     pthread_mutex_lock(&log_mutex);
     if (salary > 0) {
-        fprintf(log_file, "%llu,%s,%s,%u\n", timestamp, command, name, salary);
+        fprintf(log_file, "%lu: %s,%s,%u\n", timestamp, command, name, salary);
     } else if (strcmp(command, "print") == 0) {
-        fprintf(log_file, "%llu,%s\n", timestamp, "PRINT");
+        fprintf(log_file, "%lu: %s\n", timestamp, "PRINT");
     } else {
-        fprintf(log_file, "%llu,%s,%s\n", timestamp, command, name);
+        fprintf(log_file, "%lu: %s,%s\n", timestamp, command, name);
     }
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
@@ -230,35 +238,36 @@ void log_command(uint64_t timestamp, const char *command, const char *name, uint
 
 void log_lock(uint64_t timestamp, const char *message) {
     pthread_mutex_lock(&log_mutex);
-    fprintf(log_file, "%llu,%s\n", timestamp, message);
+    fprintf(log_file, "%lu: %s\n", timestamp, message);
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
 }
 
 void log_waiting(uint64_t timestamp, const char *message) {
     pthread_mutex_lock(&log_mutex);
-    fprintf(log_file, "%llu: %s\n", timestamp, message);
+    fprintf(log_file, "%lu: %s\n", timestamp, message);
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
 }
 
 void log_search(uint64_t timestamp, uint32_t hash, const char *name, uint32_t salary) {
     pthread_mutex_lock(&log_mutex);
-    fprintf(log_file, "%u,%s,%u\n", hash, name, salary);
+    fprintf(log_file, "%u: %s,%u\n", hash, name, salary);
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
 }
 
 void log_search_not_found(uint64_t timestamp) {
     pthread_mutex_lock(&log_mutex);
-    fprintf(log_file, "%llu: Search: No Record Found\n", timestamp);
+    fprintf(log_file, "%lu: Search: No Record Found\n", timestamp);
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
 }
 
 void log_final_counts(int acquisitions, int releases) {
     pthread_mutex_lock(&log_mutex);
-    fprintf(log_file, "\nNumber of lock acquisitions:  %d\n", acquisitions);
+    fprintf(log_file, "Finished all threads.\n"); 
+    fprintf(log_file, "Number of lock acquisitions:  %d\n", acquisitions);
     fprintf(log_file, "Number of lock releases:  %d\n", releases);
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
@@ -400,6 +409,8 @@ int main() {
 
     init_logging();
     rwlock_init(&rwlock);
+
+	log_threads_running(count);
 
     pthread_t threads[count];
     int i;
